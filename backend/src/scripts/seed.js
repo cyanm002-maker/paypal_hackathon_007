@@ -15,14 +15,14 @@ async function seedSandbox() {
         const prodRes = await axios.post(`${PAYPAL_API_BASE}/v1/catalogs/products`, {
             name: "StreamFlix Subscription",
             description: "Monthly video streaming service",
-            type: "SERVICE",
-            category: "DIGITAL_MEDIA"
+            type: "SERVICE"
+            // Removed 'category' to avoid schema errors, or use "SOFTWARE"
         }, { headers });
         
         const productId = prodRes.data.id;
         console.log(`Created Product ID: ${productId}`);
 
-        // 2. Create a Billing Plan
+       // 2. Create a Billing Plan
         console.log('Creating billing plan...');
         const planRes = await axios.post(`${PAYPAL_API_BASE}/v1/billing/plans`, {
             product_id: productId,
@@ -37,7 +37,7 @@ async function seedSandbox() {
                     pricing_scheme: { fixed_price: { value: "9.99", currency_code: "USD" } }
                 }
             ],
-            payment_preference: {
+            payment_preferences: { // <--- Changed from payment_preference to payment_preferences
                 auto_bill_outstanding: true,
                 setup_fee: { value: "0", currency_code: "USD" },
                 setup_fee_failure_action: "CONTINUE",
