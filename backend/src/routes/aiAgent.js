@@ -23,28 +23,44 @@ router.get("/insights",(req,res)=>{
         const currentSpend = row.totalSpend || 0;
         const activeCount = row.activeCount || 0;
 
+        // let recommendations = [];
+        // let statusMessage = "Your subscriptions are looking healthy";
+
+        // // logic for ai agent
+
+        // if(currentSpend>userBudget){
+        //     statusMessage = "Budget Alert: You ae exceeding your montly budget";
+        //     recommendations.push(`You are currently spending $${currentSpend.toFixed(2)}, which is over your $${userBudget.toFixed(2)} budget.`);
+        //     recommendations.push("Consider auditing your digital media or entertainment");
+
+        // }else{
+        //     const remaning = userBudget - currentSpend;
+        //     recommendations.push(`You have $${remaining.toFixed(2)} left in your monthly subscription budget.`);
+
+
+        // }
+
+        // if(activeCount>3) {
+        //     recommendations.push(`You have ${activeCount} active subscriptions running simultaneously. Review if you use all of them weekly.`);
+
+        // }
         let recommendations = [];
-        let statusMessage = "Your subscriptions are looking healthy";
+        let statusMessage = "Your subscriptions are looking healthy!";
 
-        // logic for ai agent
-
-        if(currentSpend>userBudget){
-            statusMessage = "Budget Alert: You ae exceeding your montly budget";
+        // Smart agent evaluation logic
+        if (currentSpend > userBudget) {
+            statusMessage = "Budget Alert: You are exceeding your monthly subscription limit!";
             recommendations.push(`You are currently spending $${currentSpend.toFixed(2)}, which is over your $${userBudget.toFixed(2)} budget.`);
-            recommendations.push("Consider auditing your digital media or entertainment");
-
-        }else{
-            const remaning = userBudget - currentSpend;
+            recommendations.push("Consider auditing your digital media or entertainment categories for unused services.");
+        } else {
+            // Calculate remaining safely here
+            const remaining = userBudget - currentSpend;
             recommendations.push(`You have $${remaining.toFixed(2)} left in your monthly subscription budget.`);
-
-
         }
 
-        if(activeCount>3) {
+        if (activeCount > 3) {
             recommendations.push(`You have ${activeCount} active subscriptions running simultaneously. Review if you use all of them weekly.`);
-
         }
-
         res.json({
             success: true,
             agent_analysis: {
