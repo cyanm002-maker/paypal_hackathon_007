@@ -1,122 +1,78 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import { useEffect, useState } from 'react';
+import { getSubscriptions, getAnalyticsSummary, getAgentInsights } from './services/api';
 
-function App() {
-  const [count, setCount] = useState(0)
+export default function Dashboard() {
+    const [subscriptions, setSubscriptions] = useState([]);
+    const [analytics, setAnalytics] = useState(null);
+    const [insights, setInsights] = useState(null);
 
-  return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
+    useEffect(() => {
+        async function loadDashboardData() {
+            try {
+                const subData = await getSubscriptions();
+                const analyticsData = await getAnalyticsSummary();
+                const insightData = await getAgentInsights(50); // Pass user budget limit
+
+                setSubscriptions(subData.subscriptions || []);
+                setAnalytics(analyticsData.analytics);
+                setInsights(insightData.agent_analysis);
+            } catch (err) {
+                console.error("Failed to load dashboard data", err);
+            }
+        }
+
+        loadDashboardData();
+    }, []);
+
+    return (
+        <div style={{ padding: '20px', fontFamily: 'sans-serif' }}>
+            <h1>SubShield Dashboard</h1>
+
+            {/* Analytics Summary Cards */}
+            {analytics && (
+                <div style={{ display: 'flex', gap: '20px', marginBottom: '20px' }}>
+                    <div style={{ padding: '15px', background: '#f4f4f4', borderRadius: '8px' }}>
+                        <h3>Monthly Spend</h3>
+                        <p style={{ fontSize: '24px', fontWeight: 'bold' }}>${analytics.totalMonthlySpend.toFixed(2)}</p>
+                    </div>
+                    <div style={{ padding: '15px', background: '#f4f4f4', borderRadius: '8px' }}>
+                        <h3>Active Subscriptions</h3>
+                        <p style={{ fontSize: '24px', fontWeight: 'bold' }}>{analytics.activeSubscriptionsCount}</p>
+                    </div>
+                </div>
+            )}
+
+            {/* AI Agent Insights Box */}
+            {insights && (
+                <div style={{ padding: '15px', background: '#eef2ff', borderLeft: '4px solid #4f46e5', marginBottom: '20px' }}>
+                    <h3>AI Budget Advisor</h3>
+                    <p><strong>Status:</strong> {insights.status}</p>
+                    <ul>
+                        {insights.recommendations.map((rec, index) => (
+                            <li key={index}>{rec}</li>
+                        ))}
+                    </ul>
+                </div>
+            )}
+
+            <section>
+                <h2>Subscriptions</h2>
+                {subscriptions.length === 0 ? (
+                    <p>No subscriptions found.</p>
+                ) : (
+                    <ul>
+                        {subscriptions.map((subscription) => (
+                            <li key={subscription.id ?? subscription.paypal_sub_id}>
+                                <strong>{subscription.merchant_name || subscription.plan_name}</strong>
+                                {' — '}
+                                {subscription.currency} {subscription.amount}
+                                {' · '}
+                                {subscription.status}
+                            </li>
+                        ))}
+                    </ul>
+                )}
+            </section>
         </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+    );
 }
-
-export default App
