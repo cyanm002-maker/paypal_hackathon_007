@@ -1,9 +1,15 @@
 const express = require('express');
 const { getPayPalAccessToken } = require('./config/paypal');
+
 require('dotenv').config();
+const db = require("./config/database");
+const subscriptionRoutes = require('./routes/subscriptions');
+
 
 const app = express();
 app.use(express.json());
+app.use('/api/subscriptions',subscriptionRoutes);
+
 
 const PORT = process.env.PORT || 5000;
 
