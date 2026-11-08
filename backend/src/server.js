@@ -4,6 +4,9 @@ const db = require('./config/database');
 const subscriptionRoutes = require('./routes/subscriptions');
 const webhookRoutes = require('./routes/webhooks');
 const analytics = require('./routes/analytics');
+const aiAgentRoutes = require('./routes/aiAgent');
+
+// this is used to call the api key 
 require('dotenv').config();
 
 const app = express();
@@ -27,7 +30,7 @@ app.get('/api/test-token', async (req, res) => {
 app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/webhooks', webhookRoutes);
 app.use('/api/analytics',analytics);
-
+app.use('/api/agent',aiAgentRoutes);
 
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
