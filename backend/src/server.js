@@ -1,19 +1,17 @@
 const express = require('express');
 const { getPayPalAccessToken } = require('./config/paypal');
-
-require('dotenv').config();
-const db = require("./config/database");
+const db = require('./config/database');
 const subscriptionRoutes = require('./routes/subscriptions');
-
+require('dotenv').config();
 
 const app = express();
-app.use(express.json());
-app.use('/api/subscriptions',subscriptionRoutes);
 
+
+app.use(express.json()); 
 
 const PORT = process.env.PORT || 5000;
 
-// Test route to verify token generation via API
+// Test token route
 app.get('/api/test-token', async (req, res) => {
     try {
         const token = await getPayPalAccessToken();
@@ -22,6 +20,9 @@ app.get('/api/test-token', async (req, res) => {
         res.status(500).json({ success: false, error: error.message });
     }
 });
+
+// Mount subscription routes
+app.use('/api/subscriptions', subscriptionRoutes);
 
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
