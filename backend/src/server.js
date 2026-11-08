@@ -3,6 +3,7 @@ const { getPayPalAccessToken } = require('./config/paypal');
 const db = require('./config/database');
 const subscriptionRoutes = require('./routes/subscriptions');
 const webhookRoutes = require('./routes/webhooks');
+const analytics = require('./routes/analytics');
 require('dotenv').config();
 
 const app = express();
@@ -25,6 +26,8 @@ app.get('/api/test-token', async (req, res) => {
 // Mount subscription routes
 app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/webhooks', webhookRoutes);
+app.use('/api/analytics',analytics);
+
 
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
