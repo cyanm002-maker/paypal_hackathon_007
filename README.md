@@ -1,86 +1,181 @@
-# SubShield
+# SubShield 🛡️
+### Production-Grade Subscription Defense System & Dark-Pattern Shield
 
-SubShield is a subscription-management project. The backend provides Express API routes for subscriptions, PayPal webhooks, analytics, and subscription insights. The frontend is a React app built with Vite.
+SubShield is an AI-powered financial protection application designed to detect stealth subscription price increases, eliminate dormant **"Zombie Subscriptions"** using a real-time Cost-Per-Use ROI engine, and draft legally-backed FTC "Click-to-Cancel" dark-pattern bypass scripts.
 
-## Project files
+---
+
+## 🚀 Key Competitive Features
+
+1. **Authentication & Core Pages (Supabase Auth)**
+   - **High-Conversion Landing Page:** Hero showcase, interactive live Cost-Per-Use ROI calculator, comparison matrix against corporate dark patterns, and trust metrics.
+   - **Supabase Authentication:** Secure email/password login, account registration, session persistence, and Row-Level Security (RLS) policies. Includes an instant 1-click **Demo Sign-In** for rapid evaluation.
+   - **Financial Defense Dashboard:** Real-time monthly burn rate tracker, dynamic budget ceiling with visual warning thresholds, active subscription counts, and category spend breakdown.
+
+2. **Smart Anomaly & Price-Hike Detection**
+   - Automatically compares current subscription renewal prices against historical baseline rates (`historical_base_amount`).
+   - Flags sudden price hikes (e.g. +15% to +48%) with real-time warning badges.
+   - Identifies duplicate billings and redundant category bloat (e.g., overlapping streaming or cloud tiers).
+
+3. **Cost-Per-Use ROI Score & Zombie Subscription Killer**
+   - Tracks monthly engagement frequency (`usage_count` and `last_used_date`).
+   - Computes an exact **Cost-Per-Use ratio** (e.g., `$22.99 / 24 uses = $0.96 / use` → *Excellent ROI*).
+   - Automatically classifies services dormant for 60+ days as **"Zombie Subscriptions"**, calculating total wasted cash and potential annual savings.
+   - Includes a quick `+1 Use` action in each row for instant logging.
+
+4. **AI Cancellation & Negotiation Assistant**
+   - Generates FTC-backed "Click-to-Cancel" formal demand letters citing federal regulations against deceptive retention mazes.
+   - Generates **Live-Chat Rebuttals** to counter customer support delay tactics (e.g. "You must call our hotline", "Would you like 3 months at 50% off?").
+   - Provides promotional rate negotiation scripts (requesting 50% loyalty discounts).
+   - Integrates a 1-click copy-to-clipboard mechanism and direct cancellation status updates.
+
+5. **PayPal Live Sync & Webhooks**
+   - Direct integration with PayPal Subscriptions API (`/v1/billing/subscriptions`).
+   - Automated status syncing for `BILLING.SUBSCRIPTION.ACTIVATED`, `CANCELLED`, `SUSPENDED`, and `EXPIRED` events.
+
+---
+
+## 🗄️ Supabase Database & SQL Migration Script
+
+SubShield is designed to run with **Supabase** as the primary database store with strict **Row Level Security (RLS)**.
+
+### How to apply the migration in Supabase:
+1. Open your [Supabase Dashboard](https://supabase.com/dashboard).
+2. Navigate to **SQL Editor** -> **New Query**.
+3. Copy and paste the contents of [`supabase_migration.sql`](file:///c:/Users/CYAN/Desktop/paypal-hackathon/paypal_hackathon_007/supabase_migration.sql) (or run the snippet below).
+4. Click **Run**.
+
+```sql
+-- Enable Required Extensions
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
+-- User Budgets / Profile Settings Table
+CREATE TABLE IF NOT EXISTS public.user_budgets (
+    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    monthly_budget_limit NUMERIC(10, 2) NOT NULL DEFAULT 50.00,
+    currency VARCHAR(10) NOT NULL DEFAULT 'USD',
+    alert_email BOOLEAN DEFAULT TRUE,
+    price_hike_threshold_pct NUMERIC(5, 2) DEFAULT 10.00,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
+-- Subscriptions Table
+CREATE TABLE IF NOT EXISTS public.subscriptions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    amount NUMERIC(10, 2) NOT NULL CHECK (amount >= 0),
+    currency VARCHAR(10) NOT NULL DEFAULT 'USD',
+    billing_cycle VARCHAR(50) NOT NULL DEFAULT 'MONTHLY',
+    category VARCHAR(100) NOT NULL DEFAULT 'Other',
+    paypal_sub_id VARCHAR(255),
+    status VARCHAR(50) NOT NULL DEFAULT 'ACTIVE',
+    usage_count INTEGER NOT NULL DEFAULT 0 CHECK (usage_count >= 0),
+    last_used_date DATE DEFAULT CURRENT_DATE,
+    historical_base_amount NUMERIC(10, 2) DEFAULT NULL,
+    merchant_name VARCHAR(255),
+    next_billing_date DATE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
+-- Subscription Logs Table (Audit & History)
+CREATE TABLE IF NOT EXISTS public.subscription_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    subscription_id UUID REFERENCES public.subscriptions(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    event_type VARCHAR(50) NOT NULL,
+    old_amount NUMERIC(10, 2),
+    new_amount NUMERIC(10, 2),
+    notes TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
+-- Row Level Security (RLS)
+ALTER TABLE public.subscriptions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_budgets ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.subscription_logs ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view their own subscriptions" ON public.subscriptions FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can create their own subscriptions" ON public.subscriptions FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update their own subscriptions" ON public.subscriptions FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can delete their own subscriptions" ON public.subscriptions FOR DELETE USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can view their own budget" ON public.user_budgets FOR SELECT USING (auth.uid() = id);
+CREATE POLICY "Users can insert their own budget" ON public.user_budgets FOR INSERT WITH CHECK (auth.uid() = id);
+CREATE POLICY "Users can update their own budget" ON public.user_budgets FOR UPDATE USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
+```
+
+---
+
+## 🛠️ Project Structure
 
 ```text
 .
 ├── backend/
 │   ├── src/
 │   │   ├── config/
-│   │   │   ├── database.js       # Opens SQLite and creates the subscriptions table
-│   │   │   └── paypal.js         # Loads PayPal settings and fetches access tokens
+│   │   │   ├── database.js          # SQLite fallback for offline local dev
+│   │   │   ├── paypal.js            # PayPal OAuth token manager
+│   │   │   └── supabase.js          # Supabase Node client connector
 │   │   ├── routes/
-│   │   │   ├── subscriptions.js  # Create, list, and cancel subscriptions
-│   │   │   ├── webhooks.js       # Receives PayPal subscription events
-│   │   │   ├── analytics.js      # Provides subscription spending summaries
-│   │   │   └── aiAgent.js        # Provides budget and subscription insights
-│   │   ├── scripts/
-│   │   │   └── seed.js           # Creates a sample product and billing plan in PayPal Sandbox
+│   │   │   ├── subscriptions.js     # Add, list, log usage, cancel subscriptions
+│   │   │   ├── analytics.js         # Spend summaries, Anomaly detector & ROI/Zombies
+│   │   │   ├── aiAgent.js           # Budget advice & Dark-Pattern AI Script Assistant
+│   │   │   └── webhooks.js          # PayPal billing event handlers
+│   │   └── server.js                # Express app launcher
+│   ├── .env.example
+│   └── package.json
+├── frontend/
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── Navbar.jsx           # Responsive header with Supabase status pill
+│   │   │   ├── LandingPage.jsx      # High-conversion landing page with ROI calculator
+│   │   │   ├── DashboardView.jsx    # Defense dashboard, burn rate & anomaly banner
+│   │   │   ├── AnomalyBanner.jsx    # Price-hike & duplicate alert component
+│   │   │   ├── AiAssistantModal.jsx # Dark pattern bypass & negotiation generator
+│   │   │   ├── RoiZombiesModal.jsx  # Zombie subscription audit & cost-per-use modal
+│   │   │   ├── AddSubscriptionModal.jsx # Subscription creation modal
+│   │   │   └── AuthModal.jsx        # Supabase Auth modal with 1-click Demo mode
 │   │   ├── services/
-│   │   │   └── api.js            # Reserved for shared API services; currently empty
-│   │   └── server.js             # Starts Express and mounts the API routes
-│   ├── .env.example              # Template for local environment settings
-│   ├── package.json              # Backend dependencies and commands
-│   └── subshield.db              # Local SQLite database (created when the backend loads database.js)
-└── frontend/
-    ├── public/                   # Static files served by Vite
-    ├── src/
-    │   ├── assets/               # Images and other imported assets
-    │   ├── App.jsx               # Main React component
-    │   ├── App.css               # Main component styles
-    │   ├── index.css             # Global styles
-    │   └── main.jsx              # React app entry point
-    ├── index.html                # Browser page Vite loads
-    ├── package.json              # Frontend dependencies and commands
-    └── vite.config.js             # Vite and React configuration
+│   │   │   ├── api.js               # Unified backend and frontend API bridge
+│   │   │   └── supabase.js          # Supabase JS client & auth listener
+│   │   ├── App.jsx                  # Main application container
+│   │   └── index.css                # Dark theme UI styles
+│   ├── .env.example
+│   ├── package.json
+│   └── vite.config.js
+└── supabase_migration.sql           # Exact SQL migration script for Supabase
 ```
 
-## Where project data is stored
+---
 
-- **SQLite data:** `backend/subshield.db`. This file is created locally when the backend imports `src/config/database.js`. The `subscriptions` table stores PayPal subscription IDs, plan and merchant information, amounts, statuses, and dates.
-- **Environment settings:** Create `backend/.env` from `backend/.env.example` and add your own PayPal Sandbox credentials. Do not commit `.env` or share your PayPal secret.
-- **Source code:** Backend files are under `backend/src/`; React frontend files are under `frontend/src/`.
+## 🏃 Quick Start (Local Development)
 
-The database file is local to the machine running the backend. It is not automatically shared with the frontend or persisted by cloud hosts that use temporary filesystems.
-
-## Backend API
-
-The server mounts these routes:
-
-| Route | Purpose |
-|---|---|
-| `GET /api/test-token` | Tests PayPal access-token retrieval. |
-| `POST /api/subscriptions/create-subscription` | Creates a PayPal subscription using a JSON `plan_id`, then saves it locally. |
-| `POST /api/subscriptions/add-mock` | Inserts a mock subscription into SQLite without contacting PayPal. Available outside production. |
-| `GET /api/subscriptions` | Lists subscriptions saved in SQLite. |
-| `POST /api/subscriptions/cancel-subscription/:paypal_sub_id` | Cancels a PayPal subscription and updates its local status. |
-| `POST /api/webhooks/paypal` | Receives PayPal subscription status events and updates SQLite. |
-| `GET /api/analytics/summary` | Returns spending totals and subscription counts by category. |
-| `GET /api/agent/insights?budget=50` | Returns spending and budget recommendations. |
-
-For local UI testing, send JSON such as `{"name":"Test service","amount":12.99,"currency":"USD","billing_cycle":"MONTHLY","category":"Entertainment","status":"ACTIVE"}` to `POST /api/subscriptions/add-mock`. The `name` and positive `amount` fields are required; other fields have defaults. This route is not registered when `NODE_ENV=production`.
-
-The webhook route currently processes incoming event data but does not verify PayPal's webhook signature. Add signature verification before relying on it in production.
-
-## Run locally
-
-Use separate terminals:
-
+### 1. Backend Setup
 ```powershell
 Set-Location backend
 npm install
 Copy-Item .env.example .env
 npm run dev
 ```
+The backend starts on `http://localhost:5000`.
 
-Add your PayPal Sandbox credentials to `backend/.env` before testing PayPal endpoints.
-
+### 2. Frontend Setup
 ```powershell
 Set-Location frontend
 npm install
+Copy-Item .env.example .env
 npm run dev
 ```
+The frontend starts on `http://localhost:5173`.
 
-The backend defaults to port `5000`. The frontend currently contains the Vite/React starter screen; it is not yet a subscription dashboard connected to the backend API.
+### 3. Connect Supabase (Optional for full cloud sync)
+In `frontend/.env`:
+```ini
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
+```
+*Note: If no Supabase keys are provided, SubShield automatically runs in high-fidelity sandbox/demo mode with auto-seeded demo records.*
