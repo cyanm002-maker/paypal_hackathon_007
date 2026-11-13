@@ -144,3 +144,21 @@ export const generateCancellationScript = async (params) => {
     const response = await axios.post(`${API_BASE_URL}/agent/cancellation-script`, params);
     return response.data;
 };
+
+// 12. Real-Time Live Chat Retention De-escalator & Copilot (OpenRouter LLM)
+export const getLiveChatCopilot = async (params) => {
+    const response = await axios.post(`${API_BASE_URL}/agent/chat-copilot`, params);
+    return response.data;
+};
+
+// 13. Cheaper Alternative & Arbitrage Engine (OpenRouter LLM)
+export const getAlternatives = async (params) => {
+    const response = await axios.post(`${API_BASE_URL}/agent/alternatives`, params);
+    return response.data;
+};
+
+// 14. Contract Fine-Print & Dark Pattern Auditor (OpenRouter LLM)
+export const getAuditTerms = async (params) => {
+    const response = await axios.post(`${API_BASE_URL}/agent/audit-terms`, params);
+    return response.data;
+};

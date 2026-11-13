@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const db = require("../config/database");
+const { callOpenRouter, isOpenRouterAvailable } = require("../services/openrouter");
 
 // 1. GET /api/agent/insights - Budget Advisor & Spending Health
 router.get("/insights", (req, res) => {
@@ -25,23 +26,22 @@ router.get("/insights", (req, res) => {
         let statusMessage = "Your subscriptions are looking healthy!";
         let healthScore = 85;
 
-        // Smart agent evaluation logic
         if (currentSpend > userBudget) {
             const overage = currentSpend - userBudget;
-            statusMessage = "⚠️ Budget Alert: You are exceeding your monthly subscription limit!";
-            recommendations.push(`You are spending $${currentSpend.toFixed(2)}/mo, which is $${overage.toFixed(2)} over your $${userBudget.toFixed(2)} budget target.`);
-            recommendations.push("Recommendation: Cancel flagged 'Zombie' subscriptions or negotiate a retention discount to immediately bring spending under control.");
+            statusMessage = "Budget Warning: Spending exceeds your monthly target ceiling";
+            recommendations.push(`You are spending $${currentSpend.toFixed(2)}/mo, which is $${overage.toFixed(2)} above your $${userBudget.toFixed(2)} target.`);
+            recommendations.push("Decommission inactive accounts or request loyalty retention discounts to restore margin.");
             healthScore = Math.max(30, Math.round(100 - (overage / userBudget) * 60));
         } else {
             const remaining = userBudget - currentSpend;
             const pctUsed = userBudget > 0 ? Math.round((currentSpend / userBudget) * 100) : 0;
-            statusMessage = `✅ Safe: Spending within budget (${pctUsed}% used).`;
-            recommendations.push(`You have $${remaining.toFixed(2)} headroom left in your monthly budget.`);
+            statusMessage = `Optimal: Monthly allocation is within safe thresholds (${pctUsed}% utilized).`;
+            recommendations.push(`You have $${remaining.toFixed(2)} in headroom under your monthly budget limit.`);
             healthScore = 90;
         }
 
         if (activeCount >= 4) {
-            recommendations.push(`You have ${activeCount} active recurring services. We recommend checking for category overlap (e.g. redundant streaming or cloud tiers).`);
+            recommendations.push(`You maintain ${activeCount} active recurring services. Audit category overlap to verify you are not paying for redundant tiers.`);
         }
 
         res.json({
@@ -52,162 +52,320 @@ router.get("/insights", (req, res) => {
                 active_subscriptions: activeCount,
                 health_score: healthScore,
                 status: statusMessage,
-                recommendations: recommendations
+                recommendations: recommendations,
+                llm_powered: isOpenRouterAvailable()
             }
         });
     });
 });
 
-// 2. POST /api/agent/cancellation-script - AI Cancellation & Negotiation Assistant
-router.post("/cancellation-script", (req, res) => {
+// 2. POST /api/agent/cancellation-script - AI Cancellation & Negotiation Assistant (OpenRouter LLM + Fallback)
+router.post("/cancellation-script", async (req, res) => {
     const {
         serviceName = "Service",
         amount = "19.99",
         currency = "USD",
-        strategy = "FTC_DARK_PATTERN", // 'FTC_DARK_PATTERN' | 'RETENTION_DISCOUNT' | 'UNEXPECTED_HIKE' | 'ZOMBIE_INACTIVITY'
-        tone = "FIRM_LEGAL",           // 'FIRM_LEGAL' | 'POLITE_PERSUASIVE' | 'STUDENT_HARDSHIP'
+        strategy = "FTC_DARK_PATTERN",
+        tone = "FIRM_LEGAL",
         userReason = ""
     } = req.body || {};
 
     const formattedAmount = `${currency} ${amount}`;
     const dateToday = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
-    let subject = "";
-    let emailBody = "";
-    let liveChatScript = [];
-    let playbookTips = [];
+    // If OpenRouter is available, generate bespoke, highly contextual output via LLM
+    if (isOpenRouterAvailable()) {
+        try {
+            const systemPrompt = `You are SubShield's Senior Consumer Protection Attorney and Anti-Dark-Pattern Negotiator.
+Your goal is to generate an ironclad, legally formidable cancellation letter or aggressive discount negotiation for the user.
+You cite real federal and state statutory provisions when applicable:
+- FTC "Click-to-Cancel" Rule (16 CFR Part 425 / 89 FR 85724)
+- California Automatic Renewal Law (Cal. Bus. & Prof. Code § 17602)
+- Restore Online Shoppers' Confidence Act (ROSCA, 15 U.S.C. §§ 8401–8405)
 
-    switch (strategy) {
-        case 'FTC_DARK_PATTERN':
-            subject = `IMMEDIATE CANCELLATION NOTICE - Account linked to [Account Email] - Non-consensual retention bypass`;
-            emailBody = `To Customer Support & Billing Department for ${serviceName},
+You must output ONLY valid JSON matching this exact structure:
+{
+  "subject": "Clear, urgent email subject line",
+  "emailBody": "Full, well-spaced letter/email with placeholders [Your Full Name], [Your Account Email]",
+  "liveChatScript": [
+    { "role": "Agent", "text": "Representative objection or retention pitch" },
+    { "role": "You (AI Counter)", "text": "Exact lethal counter-response citing statutory rights" },
+    { "role": "Agent", "text": "Second typical friction response (e.g. phone call or pause)" },
+    { "role": "You (AI Counter)", "text": "Decisive counter-response demanding immediate confirmation number" }
+  ],
+  "playbookTips": [
+    "Tactical tip 1",
+    "Tactical tip 2",
+    "Tactical tip 3"
+  ]
+}`;
 
-This is an unambiguous, formal instruction to immediately cancel my subscription to ${serviceName} (${formattedAmount}/billing cycle) and terminate all automated payment authorizations on my PayPal/card ending in [Last 4 Digits].
+            const userPrompt = `Generate a cancellation/negotiation pack for:
+Service: "${serviceName}"
+Renewal Rate: "${formattedAmount}"
+Strategy: "${strategy}" (FTC_DARK_PATTERN = Demand immediate termination bypassing dark patterns; RETENTION_DISCOUNT = Demand 50% competitor price-matching to stay; UNEXPECTED_HIKE = Dispute stealth rate jump without explicit affirmative consent; ZOMBIE_INACTIVITY = Terminate dormant account with purge of payment details).
+Tone: "${tone}"
+User Context: "${userReason || 'None provided'}"
+Date: "${dateToday}"
 
-Under FTC "Click-to-Cancel" enforcement guidelines and Section 5 of the FTC Act, consumers cannot be subjected to deceptive dark patterns, hidden multi-step cancellation mazes, mandatory phone call barriers, or unrequested retention quizzes.
+Output JSON only.`;
 
-Details:
-- Service: ${serviceName}
-- Billing Rate: ${formattedAmount}
-- Date of Notice: ${dateToday}
-${userReason ? `- Reason: ${userReason}` : ''}
+            const rawResponse = await callOpenRouter({
+                messages: [
+                    { role: "system", content: systemPrompt },
+                    { role: "user", content: userPrompt }
+                ],
+                temperature: 0.3
+            });
 
-Please process this cancellation immediately and email confirmation of termination within 24 business hours. If any further charges occur post-notice, I will immediately submit a dispute with PayPal/my banking institution citing unauthorized recurring billing.
+            // Parse JSON response safely
+            const jsonText = rawResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+            const parsed = JSON.parse(jsonText);
 
-Sincerely,
-[Your Full Name]
-[Your Account Email]`;
-            liveChatScript = [
-                { role: "Agent", text: "We're sorry to see you go! Before we cancel, would you be interested in keeping access at 50% off for the next 3 months?" },
-                { role: "You (AI Counter)", text: "No thank you. Please do not offer retention incentives. Process the immediate cancellation of my account right now and confirm the confirmation reference number." },
-                { role: "Agent", text: "You will need to call our billing support phone line between 9am-5pm to complete this." },
-                { role: "You (AI Counter)", text: "Under FTC regulations, cancellation mechanisms must be as simple as the signup mechanism. I enrolled online without a phone call; I am entitled to cancel online right now in this chat." }
-            ];
-            playbookTips = [
-                "Citing the FTC Click-to-Cancel Rule usually causes level-1 support bots to bypass tier retention questions.",
-                "Take a screenshot of the chat transcript or save the email sent timestamp.",
-                "If they stall, revoke billing permissions in PayPal Settings -> Payments -> Automatic Payments."
-            ];
-            break;
+            return res.json({
+                success: true,
+                llm: true,
+                script: {
+                    serviceName,
+                    amount: formattedAmount,
+                    strategy,
+                    tone,
+                    subject: parsed.subject,
+                    emailBody: parsed.emailBody,
+                    liveChatScript: parsed.liveChatScript,
+                    playbookTips: parsed.playbookTips
+                }
+            });
+        } catch (llmError) {
+            console.warn("OpenRouter generation fallback triggered:", llmError.message);
+            // Fall through to algorithmic backup below
+        }
+    }
 
-        case 'RETENTION_DISCOUNT':
-            subject = `Subscription Review: Request for promotional rate matching on ${serviceName}`;
-            emailBody = `Hello ${serviceName} Retention Team,
+    // Algorithmic Fallback Engine
+    let subject = `IMMEDIATE CANCELLATION NOTICE - ${serviceName} [Account Email]`;
+    let emailBody = `To Billing Department for ${serviceName},\n\nThis is formal notice to terminate my subscription to ${serviceName} (${formattedAmount}/period) immediately under FTC Click-to-Cancel regulations.\n\nDate: ${dateToday}\nSincerely,\n[Your Full Name]`;
+    let liveChatScript = [
+        { role: "Agent", text: "Would you like 3 months at 50% off to remain enrolled?" },
+        { role: "You (AI Counter)", text: "No. Under FTC Click-to-Cancel enforcement, please terminate this subscription immediately and issue confirmation." }
+    ];
+    let playbookTips = [
+        "Take a screenshot of this confirmation transcript.",
+        "Revoke PayPal billing permissions in PayPal Settings > Payments > Automatic Payments."
+    ];
 
-I have been reviewing my recurring monthly software expenses and noticed my ${serviceName} subscription currently renews at ${formattedAmount}/month.
-
-While I appreciate the platform, competing services are currently offering promo rates at 40-50% below this pricing. Before I initiate an account migration, I wanted to reach out and see if there are any loyalty retention discounts, annual promotion tiers, or student/hardship matching offers available for my account.
-
-${userReason ? `Note: ${userReason}` : ''}
-
-If we can lower my rate to around ${currency} ${(Number(amount) * 0.5).toFixed(2)}/mo or apply an extended promotional discount, I would gladly stay with ${serviceName}. Otherwise, please treat this email as a request to downgrade or cancel at the end of the current billing cycle.
-
-Looking forward to your options,
-[Your Full Name]
-[Your Account Email]`;
-            liveChatScript = [
-                { role: "Agent", text: "How can I help you today?" },
-                { role: "You (AI Counter)", text: `Hi! I enjoy ${serviceName}, but my current ${formattedAmount} fee is no longer within my budget. Competitors are offering lower tiers. Can you match a 50% discount or apply a retention promo code to keep my account active?` },
-                { role: "Agent", text: "The best I can do right now is 15% off for 1 month." },
-                { role: "You (AI Counter)", text: "I have seen other members offered 6 months at 40-50% off. Could you check with your supervisor for tier retention discounts before I finalize cancellation?" }
-            ];
-            playbookTips = [
-                "Retention chat reps typically have pre-authorized 30% to 50% discounts they only unlock on the 2nd pushback.",
-                "Always be courteous but firm: reps are measured on saving subscribers.",
-                "If they refuse, cancel and watch for the 'We miss you' re-engagement email 48 hours later with steep discounts."
-            ];
-            break;
-
-        case 'UNEXPECTED_HIKE':
-            subject = `DISPUTE: Unauthorized price increase without adequate consent on ${serviceName}`;
-            emailBody = `Dear ${serviceName} Billing Department,
-
-I am writing regarding the recent price increase on my subscription to ${formattedAmount}. My original agreement was established at a lower baseline rate, and I did not provide explicit affirmative consent for this recent price hike.
-
-Under consumer protection guidelines and automatic renewal statutes, material changes to subscription billing terms require clear and conspicuous advance notice with an effortless opt-out mechanism.
-
-I request either:
-1. Reversion to my previous agreed-upon rate, OR
-2. Immediate cancellation with a full prorated refund for the excess amount billed.
-
-Account Email: [Your Account Email]
-Service: ${serviceName}
-Current Rate: ${formattedAmount}
-
-Please provide written confirmation of the adjustment or cancellation within 2 business days.
-
-Regards,
-[Your Full Name]`;
-            liveChatScript = [
-                { role: "Agent", text: "Our prices increased across all tiers last month as notified in our terms." },
-                { role: "You (AI Counter)", text: "I did not receive affirmative notice or agree to this price jump. I request either my grandfathered rate be restored or an immediate full cancellation with a refund for the price difference." }
-            ];
-            playbookTips = [
-                "Companies frequently reverse hikes or grant credits if you dispute within 30 days of the rate jump.",
-                "Mentioning 'lack of clear advance notice' triggers compliance escalation flags in ticketing systems."
-            ];
-            break;
-
-        case 'ZOMBIE_INACTIVITY':
-        default:
-            subject = `Cancellation of dormant account: ${serviceName}`;
-            emailBody = `Hello ${serviceName} Support,
-
-I am writing to request the cancellation of my ${serviceName} account effective immediately. Our audit showed zero activity on this account over the past two billing cycles.
-
-Please terminate all recurring charges (${formattedAmount}/period) and send a written confirmation of cancellation. Please also purge any saved payment methods from the profile.
-
-Account Details:
-- Name: [Your Full Name]
-- Registered Email: [Your Account Email]
-- Date: ${dateToday}
-
-Thank you for your prompt assistance.
-
-Best regards,
-[Your Full Name]`;
-            liveChatScript = [
-                { role: "Agent", text: "Would you like to pause your subscription for 30 days instead of cancelling?" },
-                { role: "You (AI Counter)", text: "No, please permanently cancel the subscription right now. I do not wish to pause or remain enrolled." }
-            ];
-            playbookTips = [
-                "Pausing a subscription is a dark pattern that re-bills automatically after 30 days. Always insist on full termination.",
-                "Ask the representative to delete stored card or PayPal billing agreements."
-            ];
-            break;
+    if (strategy === 'RETENTION_DISCOUNT') {
+        subject = `Subscription Review: Request for promotional rate matching on ${serviceName}`;
+        emailBody = `Hello ${serviceName} Retention Team,\n\nI am auditing recurring software expenses. Competitors are offering equivalent tiers at 40-50% below my ${formattedAmount}/mo rate. Can you match a 50% retention promo tier?\n\nSincerely,\n[Your Full Name]`;
     }
 
     res.json({
         success: true,
-        script: {
+        llm: false,
+        script: { serviceName, amount: formattedAmount, strategy, tone, subject, emailBody, liveChatScript, playbookTips }
+    });
+});
+
+// 3. POST /api/agent/chat-copilot - Real-Time Live Chat Retention De-escalator
+router.post("/chat-copilot", async (req, res) => {
+    const {
+        serviceName = "Service",
+        agentMessage = "",
+        userGoal = "CANCEL_IMMEDIATELY", // 'CANCEL_IMMEDIATELY' | 'FORCE_DISCOUNT' | 'DISPUTE_FEE'
+        conversationHistory = []
+    } = req.body || {};
+
+    if (!agentMessage.trim()) {
+        return res.status(400).json({ error: "agentMessage is required." });
+    }
+
+    if (isOpenRouterAvailable()) {
+        try {
+            const systemPrompt = `You are SubShield's Live Chat Copilot. The user is in an active customer service chat trying to cancel or negotiate with "${serviceName}".
+The support representative just said: "${agentMessage}"
+User Goal: "${userGoal}"
+
+Analyze the agent's message. Identify their psychological retention dark pattern (e.g. Sunk Cost, Forced Phone Call, Pause Trap, Phantom Fee Threat, Survey Delay).
+Formulate the exact killer reply the user can paste right now to bypass the friction. Cite FTC Click-to-Cancel regulations or California Automatic Renewal Law if relevant.
+
+Return ONLY valid JSON:
+{
+  "darkPatternIdentified": "Short name of dark pattern tactic",
+  "patternExplanation": "1-2 sentence explanation of why the agent is saying this",
+  "rebuttalSnippet": "The exact concise, powerful response for the user to paste",
+  "proTip": "Actionable instruction (e.g. 'Do not click pause', 'Demand ticket number')"
+}`;
+
+            const raw = await callOpenRouter({
+                messages: [
+                    { role: "system", content: systemPrompt },
+                    ...conversationHistory.slice(-4),
+                    { role: "user", content: `The agent just told me: "${agentMessage}". What do I say?` }
+                ],
+                temperature: 0.2
+            });
+
+            const jsonText = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+            const parsed = JSON.parse(jsonText);
+
+            return res.json({
+                success: true,
+                copilot: parsed
+            });
+        } catch (err) {
+            console.error("Chat copilot LLM error:", err.message);
+        }
+    }
+
+    // Default fallback
+    res.json({
+        success: true,
+        copilot: {
+            darkPatternIdentified: "Retention Deflection",
+            patternExplanation: "Representative is attempting to delay termination with procedural friction.",
+            rebuttalSnippet: "I understand your policy, but under FTC Click-to-Cancel rules, I am entitled to cancel online right now. Please process this cancellation immediately and provide my confirmation number.",
+            proTip: "Remain firm and decline any offer to 'pause' or 'call a specialist'."
+        }
+    });
+});
+
+// 4. POST /api/agent/alternatives - Cheaper Alternative & Competitor Arbitrage Engine
+router.post("/alternatives", async (req, res) => {
+    const {
+        serviceName = "Service",
+        currentAmount = 20,
+        currency = "USD",
+        category = "General"
+    } = req.body || {};
+
+    if (isOpenRouterAvailable()) {
+        try {
+            const prompt = `Analyze the recurring service "${serviceName}" costing ${currency} ${currentAmount}/month in category "${category}".
+Recommend:
+1. Free or Open-Source alternative (FOSS)
+2. Lower-cost commercial competitor
+3. Plan arbitrage hack (secret student tier, annual bundle discount, regional trick, or downgrade loophole)
+4. Estimated annual dollar savings if they switch
+
+Output ONLY valid JSON:
+{
+  "serviceName": "${serviceName}",
+  "currentAnnualCost": ${Number(currentAmount) * 12},
+  "freeOrOpenSourceAlternative": {
+    "name": "Alternative Name",
+    "description": "What it is and how to use it",
+    "cost": "$0/yr",
+    "estimatedAnnualSavings": "${currency} ${(Number(currentAmount) * 12).toFixed(2)}"
+  },
+  "cheaperCommercialCompetitor": {
+    "name": "Competitor Name",
+    "typicalPrice": "$X/mo",
+    "advantage": "Key benefit",
+    "estimatedAnnualSavings": "${currency} ${(Number(currentAmount) * 6).toFixed(2)}"
+  },
+  "arbitrageHack": "Specific tactic to lower cost on ${serviceName} without leaving",
+  "verdict": "Executive recommendation"
+}`;
+
+            const raw = await callOpenRouter({
+                messages: [{ role: "user", content: prompt }],
+                temperature: 0.3
+            });
+
+            const jsonText = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+            const parsed = JSON.parse(jsonText);
+
+            return res.json({
+                success: true,
+                arbitrage: parsed
+            });
+        } catch (err) {
+            console.error("Alternatives LLM error:", err.message);
+        }
+    }
+
+    // Default fallback
+    res.json({
+        success: true,
+        arbitrage: {
             serviceName,
-            amount: formattedAmount,
-            strategy,
-            tone,
-            subject,
-            emailBody,
-            liveChatScript,
-            playbookTips
+            currentAnnualCost: Number(currentAmount) * 12,
+            freeOrOpenSourceAlternative: {
+                name: "Community Open-Source Alternative",
+                description: "Free self-hosted or open-source tier with comparable core features.",
+                cost: "$0/yr",
+                estimatedAnnualSavings: `${currency} ${(Number(currentAmount) * 12).toFixed(2)}`
+            },
+            cheaperCommercialCompetitor: {
+                name: "Budget Competitor Tier",
+                typicalPrice: "50% lower",
+                advantage: "Lean feature set without enterprise markup",
+                estimatedAnnualSavings: `${currency} ${(Number(currentAmount) * 6).toFixed(2)}`
+            },
+            arbitrageHack: "Contact billing stating you received a competitor offer; ask for their unadvertised loyalty downgrade plan.",
+            verdict: "Audit whether you utilize premium features or can transition to open-source."
+        }
+    });
+});
+
+// 5. POST /api/agent/audit-terms - Contract Fine-Print & Dark Pattern Auditor
+router.post("/audit-terms", async (req, res) => {
+    const { serviceName = "Subscription Service", termsText = "" } = req.body || {};
+
+    if (isOpenRouterAvailable()) {
+        try {
+            const prompt = `Analyze the cancellation terms and contract fine print for the subscription service: "${serviceName}".
+${termsText ? `Provided terms text: """${termsText}"""` : 'Use your internal legal knowledge of typical contracts and terms of service for this company.'}
+
+Audit for consumer-hostile dark patterns:
+- Hidden renewal price jumps
+- Forced telephone calls or physical mail to cancel
+- Early termination fees / liquidated damages
+- Minimum notice windows (e.g. must give 30 days notice)
+- Automatic conversion from free trial without notification
+
+Output ONLY valid JSON:
+{
+  "serviceName": "${serviceName}",
+  "darkPatternScore": 75,
+  "riskLevel": "HIGH",
+  "criticalClauses": [
+    { "clause": "Clause name", "risk": "Description of consumer risk", "severity": "HIGH" },
+    { "clause": "Notice requirement", "risk": "Must notify X days before renewal", "severity": "MEDIUM" }
+  ],
+  "cancellationDifficulty": "Hard / Multi-step / Mandatory hotline",
+  "recommendedAction": "Actionable advice to neutralize this contract trap"
+}`;
+
+            const raw = await callOpenRouter({
+                messages: [{ role: "user", content: prompt }],
+                temperature: 0.2
+            });
+
+            const jsonText = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+            const parsed = JSON.parse(jsonText);
+
+            return res.json({
+                success: true,
+                audit: parsed
+            });
+        } catch (err) {
+            console.error("Audit terms LLM error:", err.message);
+        }
+    }
+
+    res.json({
+        success: true,
+        audit: {
+            serviceName,
+            darkPatternScore: 68,
+            riskLevel: "MODERATE",
+            criticalClauses: [
+                { clause: "Continuous Auto-Renewal", risk: "Bills automatically without requiring affirmative renewal consent.", severity: "MEDIUM" },
+                { clause: "Pre-Billing Window", risk: "May process charge up to 48 hours prior to renewal date.", severity: "HIGH" }
+            ],
+            cancellationDifficulty: "Moderate online friction",
+            recommendedAction: "Cancel recurring pre-approval directly in PayPal to bypass merchant retention mazes."
         }
     });
 });

@@ -170,7 +170,10 @@ CREATE POLICY "Users can insert their own logs" ON public.subscription_logs FOR 
 | `GET` | `/api/analytics/anomalies` | Runs price-hike, duplicate charge, and category overlap detection. |
 | `GET` | `/api/analytics/roi-and-zombies` | Calculates cost-per-use ratios, days inactive, and identifies dormant services. |
 | `GET` | `/api/agent/insights?budget=150` | Returns spending evaluation and health recommendations. |
-| `POST` | `/api/agent/cancellation-script` | Generates FTC Click-to-Cancel notices, live-chat rebuttals, and retention negotiation scripts. |
+| `POST` | `/api/agent/cancellation-script` | Generates FTC Click-to-Cancel notices, live-chat rebuttals, and retention negotiation scripts (OpenRouter LLM). |
+| `POST` | `/api/agent/chat-copilot` | Real-time live chat de-escalator: analyzes agent dark patterns and formulates instant counter-responses (OpenRouter LLM). |
+| `POST` | `/api/agent/alternatives` | Recommends cheaper competitors, free open-source tools, and plan arbitrage tricks (OpenRouter LLM). |
+| `POST` | `/api/agent/audit-terms` | Scans fine print and calculates Dark Pattern Friction Score (0-100) (OpenRouter LLM). |
 | `POST` | `/api/webhooks/paypal` | Receives and synchronizes PayPal subscription billing events. |
 
 ---
