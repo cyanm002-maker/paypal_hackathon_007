@@ -476,4 +476,37 @@ export default function AiAssistantModal({ isOpen, onClose, initialData = null, 
                             </div>
                         )}
 
-                        {/* Tab 3: P
+                        {/* Tab 3: Playbook Tips */}
+                        {activeTab === 'playbook' && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                <div style={{ background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.25)', padding: '14px', borderRadius: '10px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#34d399', fontSize: '13px', fontWeight: '700', marginBottom: '6px' }}>
+                                        <Scale size={16} />
+                                        <span>Federal Trade Commission (FTC) "Click-to-Cancel" Rule</span>
+                                    </div>
+                                    <p style={{ color: '#cbd5e1', fontSize: '12.5px', margin: 0, lineHeight: '1.55' }}>
+                                        Under FTC enforcement guidelines, it is a deceptive trade practice for companies to make cancelling a subscription more burdensome than sign-up. If enrollment was completed online, consumers are legally entitled to cancel online without required phone communication.
+                                    </p>
+                                </div>
+
+                                <div style={{ background: '#121826', padding: '16px', borderRadius: '10px', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                                    <h4 style={{ color: '#f1f5f9', fontSize: '13px', fontWeight: '700', margin: '0 0 8px 0' }}>
+                                        Tactical Strategy for {serviceName}:
+                                    </h4>
+                                    <ul style={{ margin: 0, paddingLeft: '20px', color: '#94a3b8', fontSize: '12.5px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                        {generatedScript.playbookTips?.map((tip, idx) => (
+                                            <li key={idx} style={{ color: '#e2e8f0' }}>{tip}</li>
+                                        ))}
+                                        <li style={{ color: '#e2e8f0' }}>
+                                            <strong>Direct PayPal Pre-Approval Revocation:</strong> You can irrevocably terminate charges by navigating to PayPal Settings &gt; Payments &gt; Automatic Payments &gt; Select {serviceName} &gt; Cancel Authorization.
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
