@@ -1,8 +1,22 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const fs = require('fs');
 
-// Target the root backend/subshield.db database
-const dbPath = path.resolve(__dirname, '../../subshield.db');
+// Vercel serverless environment compatibility
+const isVercel = Boolean(process.env.VERCEL);
+let dbPath = path.resolve(__dirname, '../../subshield.db');
+
+if (isVercel) {
+    const tmpDb = '/tmp/subshield.db';
+    try {
+        if (!fs.existsSync(tmpDb) && fs.existsSync(dbPath)) {
+            fs.copyFileSync(dbPath, tmpDb);
+        }
+        dbPath = tmpDb;
+    } catch (e) {
+        dbPath = tmpDb;
+    }
+}
 const db = new sqlite3.Database(dbPath, (err) => {
     if (err) {
         console.error('Error opening database', err.message);
