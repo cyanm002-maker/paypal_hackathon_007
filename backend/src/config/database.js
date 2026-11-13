@@ -1,13 +1,12 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 
-// Target the root backend/subshield.db database
-const dbPath = path.resolve(__dirname, '../../subshield.db');
+const dbPath = path.resolve(__dirname, '../subshield.db');
 const db = new sqlite3.Database(dbPath, (err) => {
     if (err) {
         console.error('Error opening database', err.message);
     } else {
-        console.log(`Connected to SQLite database at: ${dbPath}`);
+        console.log('Connected to SQLite database.');
         db.serialize(() => {
             db.run(`CREATE TABLE IF NOT EXISTS subscriptions (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -20,7 +19,7 @@ const db = new sqlite3.Database(dbPath, (err) => {
                 paypal_sub_id TEXT UNIQUE,
                 status TEXT DEFAULT 'ACTIVE',
                 usage_count INTEGER DEFAULT 0,
-                last_used_date TEXT,
+                last_used_date TEXT DEFAULT (DATE('now')),
                 historical_base_amount REAL,
                 merchant_name TEXT,
                 next_billing_date TEXT,
@@ -29,11 +28,9 @@ const db = new sqlite3.Database(dbPath, (err) => {
                 if (!err) {
                     // Safe column migrations for existing SQLite databases
                     const alterQueries = [
-                        `ALTER TABLE subscriptions ADD COLUMN name TEXT DEFAULT 'Subscription'`,
-                        `ALTER TABLE subscriptions ADD COLUMN billing_cycle TEXT DEFAULT 'MONTHLY'`,
                         `ALTER TABLE subscriptions ADD COLUMN user_id TEXT DEFAULT 'demo-user-001'`,
                         `ALTER TABLE subscriptions ADD COLUMN usage_count INTEGER DEFAULT 0`,
-                        `ALTER TABLE subscriptions ADD COLUMN last_used_date TEXT`,
+                        `ALTER TABLE subscriptions ADD COLUMN last_used_date TEXT DEFAULT (DATE('now'))`,
                         `ALTER TABLE subscriptions ADD COLUMN historical_base_amount REAL`,
                         `ALTER TABLE subscriptions ADD COLUMN merchant_name TEXT`,
                         `ALTER TABLE subscriptions ADD COLUMN next_billing_date TEXT`
@@ -56,8 +53,8 @@ const db = new sqlite3.Database(dbPath, (err) => {
                                 ['Netflix Premium 4K', 22.99, 'USD', 'MONTHLY', 'Entertainment', 'I-NETFLIX001', 'ACTIVE', 24, formatDate(1), 15.49],
                                 ['Spotify Premium', 10.99, 'USD', 'MONTHLY', 'Music', 'I-SPOTIFY002', 'ACTIVE', 35, formatDate(0), 9.99],
                                 ['GitHub Copilot Pro', 10.00, 'USD', 'MONTHLY', 'Productivity', 'I-GITHUB003', 'ACTIVE', 48, formatDate(0), 10.00],
-                                ['Old Gym Pass', 45.00, 'USD', 'MONTHLY', 'Fitness', 'I-GYM004', 'ACTIVE', 1, formatDate(72), 45.00],
-                                ['Adobe Creative Cloud', 54.99, 'USD', 'MONTHLY', 'Design', 'I-ADOBE005', 'ACTIVE', 2, formatDate(65), 54.99]
+                                ['Old Gym Pass', 45.00, 'USD', 'MONTHLY', 'Fitness', 'I-GYM004', 'ACTIVE', 1, formatDate(72), 45.00], // Zombie (>60 days)
+                                ['Adobe Creative Cloud', 54.99, 'USD', 'MONTHLY', 'Design', 'I-ADOBE005', 'ACTIVE', 2, formatDate(65), 54.99] // Zombie (>60 days)
                             ];
 
                             const stmt = db.prepare(`INSERT INTO subscriptions 
