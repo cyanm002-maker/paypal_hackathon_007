@@ -178,27 +178,32 @@ CREATE POLICY "Users can insert their own logs" ON public.subscription_logs FOR 
 ## Quick Start (Local Development)
 
 ### 1. Backend Setup
+Open a terminal in the project directory:
 ```powershell
-Set-Location backend
+cd backend
 npm install
-Copy-Item .env.example .env
 npm start
 ```
-The backend starts on `http://localhost:5000`.
+The backend starts on `http://localhost:5000` and automatically connects to `subshield.db` (auto-seeded with mock subscriptions for testing).
+
+> To run with auto-restart on file changes: `npm run dev`
 
 ### 2. Frontend Setup
+Open a second terminal in the project directory:
 ```powershell
-Set-Location frontend
+cd frontend
 npm install
-Copy-Item .env.example .env
 npm run dev
 ```
 The frontend starts on `http://localhost:5173`.
 
-### 3. Connect Supabase (Optional for full cloud sync)
-In `frontend/.env`:
+### 3. Supabase Integration (Optional)
+SubShield works immediately in local sandbox mode without external configuration. To connect your cloud Supabase database:
+1. Execute `supabase_migration.sql` in the **Supabase Dashboard -> SQL Editor**.
+2. Add your credentials to `frontend/.env`:
 ```ini
 VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
 ```
-*Note: If no Supabase keys are provided, SubShield automatically runs in high-fidelity sandbox/demo mode with auto-seeded demo records.*
+3. Restart the frontend dev server.
+
