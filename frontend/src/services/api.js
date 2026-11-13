@@ -7,6 +7,11 @@ export const getSubscriptions = async () => {
     return response.data;
 };
 
+export const addMockSubscription = async (subscription) => {
+    const response = await axios.post(`${API_BASE_URL}/subscriptions/add-mock`, subscription);
+    return response.data;
+};
+
 export const getAnalyticsSummary = async () => {
     const response = await axios.get(`${API_BASE_URL}/analytics/summary`);
     return response.data;

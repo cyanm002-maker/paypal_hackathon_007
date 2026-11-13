@@ -1,37 +1,25 @@
 const express = require('express');
-const { getPayPalAccessToken } = require('./config/paypal');
+const cors = require('cors');
+const bodyParser = require('body-parser');
 const db = require('./config/database');
-const subscriptionRoutes = require('./routes/subscriptions');
-const webhookRoutes = require('./routes/webhooks');
-const analytics = require('./routes/analytics');
-const aiAgentRoutes = require('./routes/aiAgent');
-
-// this is used to call the api key 
-require('dotenv').config();
 
 const app = express();
-
-
-app.use(express.json()); 
-
 const PORT = process.env.PORT || 5000;
 
-// Test token route
-app.get('/api/test-token', async (req, res) => {
-    try {
-        const token = await getPayPalAccessToken();
-        res.json({ success: true, access_token: token });
-    } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
+app.use(cors());
+app.use(bodyParser.json());
 
-// Mount subscription routes
+// Import Routes
+const subscriptionRoutes = require('./routes/subscriptions');
+const webhookRoutes = require('./routes/webhooks');
+const analyticsRoutes = require('./routes/analytics');
+const aiAgentRoutes = require('./routes/aiAgent');
+
 app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/webhooks', webhookRoutes);
-app.use('/api/analytics',analytics);
-app.use('/api/agent',aiAgentRoutes);
+app.use('/api/analytics', analyticsRoutes);
+app.use('/api/agent', aiAgentRoutes);
 
 app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`SubShield backend server running on port ${PORT}`);
 });

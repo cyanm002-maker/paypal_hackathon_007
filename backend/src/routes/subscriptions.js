@@ -1,8 +1,78 @@
 const express = require("express");
 const router = express.Router();
 const axios = require('axios');
+const { randomUUID } = require('crypto');
 const { getPayPalAccessToken, PAYPAL_API_BASE } = require('../config/paypal');
 const db = require('../config/database');
+
+const seededMockSubscriptionIds = new Set([
+    'I-NETFLIX001',
+    'I-SPOTIFY002',
+    'I-GITHUB003'
+]);
+
+const isMockSubscription = (paypalSubId) =>
+    paypalSubId.startsWith('MOCK-') || seededMockSubscriptionIds.has(paypalSubId);
+
+if (process.env.NODE_ENV !== 'production') {
+    router.post('/add-mock', (req, res) => {
+        const { name, amount } = req.body || {};
+        const currency = req.body && req.body.currency !== undefined ? req.body.currency : 'INR';
+        const billingCycle = req.body && req.body.billing_cycle !== undefined
+            ? req.body.billing_cycle
+            : 'MONTHLY';
+        const category = req.body && req.body.category !== undefined ? req.body.category : 'Other';
+        const status = req.body && req.body.status !== undefined ? req.body.status : 'ACTIVE';
+
+        if (typeof name !== 'string' || !name.trim()) {
+            return res.status(400).json({ error: 'name is required and must be a non-empty string.' });
+        }
+
+        const parsedAmount = Number(amount);
+        if ((typeof amount !== 'number' && typeof amount !== 'string') ||
+            !Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+            return res.status(400).json({ error: 'amount must be a positive number.' });
+        }
+
+        if ([currency, billingCycle, category, status].some(value => typeof value !== 'string')) {
+            return res.status(400).json({
+                error: 'currency, billing_cycle, category, and status must be strings.'
+            });
+        }
+
+        const subscription = {
+            name: name.trim(),
+            amount: parsedAmount,
+            currency,
+            billing_cycle: billingCycle,
+            category,
+            paypal_sub_id: `MOCK-${randomUUID()}`,
+            status
+        };
+        const query = `INSERT INTO subscriptions
+            (name, amount, currency, billing_cycle, category, paypal_sub_id, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?)`;
+
+        db.run(query, [
+            subscription.name,
+            subscription.amount,
+            subscription.currency,
+            subscription.billing_cycle,
+            subscription.category,
+            subscription.paypal_sub_id,
+            subscription.status
+        ], function (err) {
+            if (err) {
+                return res.status(500).json({ error: err.message });
+            }
+
+            res.status(201).json({
+                success: true,
+                subscription: { id: this.lastID, ...subscription }
+            });
+        });
+    });
+}
 
 // 1. Endpoint to create buyer subscriptions
 // router.post('/create-subscription',async(req,res)=>{
@@ -143,32 +213,37 @@ router.get('/', (req, res) => {
 router.post("/cancel-subscription/:paypal_sub_id",async(req,res)=>{
     try{
         const {paypal_sub_id} = req.params;
-        const {reason} = req.body;
+        const {reason} = req.body || {};
 
-        const token = await getPayPalAccessToken();
-        const headers = {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-        };
+        if (!isMockSubscription(paypal_sub_id)) {
+            const token = await getPayPalAccessToken();
+            const headers = {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            };
 
-        const cancelPayload = {
-            reason:reason || "Not using the service anymore"
-        };
+            const cancelPayload = {
+                reason:reason || "Not using the service anymore"
+            };
 
-        await axios.post(`${PAYPAL_API_BASE}/v1/billing/subscriptions/${paypal_sub_id}/cancel`, cancelPayload, { headers });
+            await axios.post(`${PAYPAL_API_BASE}/v1/billing/subscriptions/${paypal_sub_id}/cancel`, cancelPayload, { headers });
+        }
 
-        // Update local SQLite database status to CANCELLED 
         const query = `UPDATE subscriptions SET status = 'CANCELLED' WHERE paypal_sub_id = ?`;
 
-        db.run(query,[paypal_sub_id],function(err){
+        db.run(query, [paypal_sub_id], function(err) {
             if(err){
                 return res.status(500).json({error:err.message});
             }
             if(this.changes==0){
-                return res.status(404).json({error:'Subscription found in PayPal, but not found in local database'});
+                return res.status(404).json({error:'Subscription not found in the local database.'});
 
             }
-            res.json({success:true,message:`Subscription ${paypal_sub_id} successfully cancelled.`});
+            res.json({
+                success: true,
+                message: `Subscription ${paypal_sub_id} successfully cancelled.`,
+                local_only: isMockSubscription(paypal_sub_id)
+            });
         });
     } catch(error){
         res.status(500).json({error: error.response?.data || error.message});

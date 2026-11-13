@@ -53,11 +53,14 @@ The server mounts these routes:
 |---|---|
 | `GET /api/test-token` | Tests PayPal access-token retrieval. |
 | `POST /api/subscriptions/create-subscription` | Creates a PayPal subscription using a JSON `plan_id`, then saves it locally. |
+| `POST /api/subscriptions/add-mock` | Inserts a mock subscription into SQLite without contacting PayPal. Available outside production. |
 | `GET /api/subscriptions` | Lists subscriptions saved in SQLite. |
 | `POST /api/subscriptions/cancel-subscription/:paypal_sub_id` | Cancels a PayPal subscription and updates its local status. |
 | `POST /api/webhooks/paypal` | Receives PayPal subscription status events and updates SQLite. |
 | `GET /api/analytics/summary` | Returns spending totals and subscription counts by category. |
 | `GET /api/agent/insights?budget=50` | Returns spending and budget recommendations. |
+
+For local UI testing, send JSON such as `{"name":"Test service","amount":12.99,"currency":"USD","billing_cycle":"MONTHLY","category":"Entertainment","status":"ACTIVE"}` to `POST /api/subscriptions/add-mock`. The `name` and positive `amount` fields are required; other fields have defaults. This route is not registered when `NODE_ENV=production`.
 
 The webhook route currently processes incoming event data but does not verify PayPal's webhook signature. Add signature verification before relying on it in production.
 

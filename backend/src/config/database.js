@@ -1,52 +1,41 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 
-// This creates a file named 'subshield.db' in your root backend/ folder
-const dbPath = path.resolve(__dirname, '../../subshield.db');
+const dbPath = path.resolve(__dirname, '../subshield.db');
 const db = new sqlite3.Database(dbPath, (err) => {
     if (err) {
         console.error('Error opening database', err.message);
     } else {
-        console.log('Connected to local SQLite database.');
+        console.log('Connected to SQLite database.');
+        db.run(`CREATE TABLE IF NOT EXISTS subscriptions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            amount REAL NOT NULL,
+            currency TEXT DEFAULT 'INR',
+            billing_cycle TEXT DEFAULT 'MONTHLY',
+            category TEXT,
+            paypal_sub_id TEXT UNIQUE,
+            status TEXT DEFAULT 'APPROVAL_PENDING',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )`, (err) => {
+            if (!err) {
+                // Auto-seed initial demo records if table is empty
+                db.get(`SELECT COUNT(*) as count FROM subscriptions`, (err, row) => {
+                    if (row && row.count === 0) {
+                        const seed = [
+                            ['Netflix', 649, 'INR', 'MONTHLY', 'Entertainment', 'I-NETFLIX001', 'ACTIVE'],
+                            ['Spotify Premium', 119, 'INR', 'MONTHLY', 'Music', 'I-SPOTIFY002', 'ACTIVE'],
+                            ['GitHub Copilot', 850, 'INR', 'MONTHLY', 'Productivity', 'I-GITHUB003', 'ACTIVE']
+                        ];
+                        const stmt = db.prepare(`INSERT INTO subscriptions (name, amount, currency, billing_cycle, category, paypal_sub_id, status) VALUES (?, ?, ?, ?, ?, ?, ?)`);
+                        seed.forEach(item => stmt.run(item));
+                        stmt.finalize();
+                        console.log('Database auto-seeded with mock subscriptions.');
+                    }
+                });
+            }
+        });
     }
 });
 
-// Initialize the subscriptions table based on your system design
-db.serialize(() => {
-    db.run(`CREATE TABLE IF NOT EXISTS subscriptions (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        paypal_sub_id TEXT UNIQUE,
-        merchant_name TEXT,
-        plan_name TEXT,
-        category TEXT,
-        amount TEXT,
-        currency TEXT,
-        interval TEXT,
-        status TEXT,
-        next_billing_time TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`);
-});
-
 module.exports = db;
-// ```[cite: 2, 4]
-
-// 3. When you run your server (`npm run dev`), `database.js` will automatically create the `subshield.db` file and the `subscriptions` table for you.
-
-// ---
-
-// ### Part 2: How Will We Deploy This? (And Will It Cause Problems?)
-
-// Deploying a Node.js + SQLite app has one major catch you need to know about:
-
-// #### 1. The SQLite Storage Problem on Cloud Hosts
-// * **The Issue:** Free hosting platforms like Render, Railway, or Fly.io use **ephemeral (temporary) file systems**. This means every time your server restarts, crashes, goes to sleep due to inactivity, or deploys new code, **your `subshield.db` file will be wiped out**, and your saved subscriptions will disappear.
-// * **The Best Workarounds:**
-//   * **Option A (For Hackathons / Quick Demos):** You can keep using SQLite, but write your `seed.js` script to automatically re-seed your mock subscriptions every time the server boots up, or manually hit your `/create-subscription` Postman endpoint right before your demo.
-//   * **Option B (The Proper Way / System Design Plan):** If you want persistent data in production, your system design recommends migrating from SQLite to **PostgreSQL** (like Supabase, Neon, or Railway's managed Postgres)[cite: 2, 4]. 
-
-// #### 2. How to Deploy (Step-by-Step Overview)
-// When you are ready to deploy your backend:
-// 1. Push your code to a GitHub repository (make sure `node_modules/` and `.env` are in your `.gitignore`)[cite: 3].
-// 2. Create a project on a platform like **Render** or **Railway** and link your GitHub repository.
-// 3. **Crucial Step:** Go to your hosting provider's dashboard settings and manually add your environment variables (`PAYPAL_CLIENT_ID`, `PAYPAL_SECRET`, `PAYPAL_API_BASE`) so your app can talk to PayPal in production[cite: 3].

@@ -2,22 +2,25 @@ const express = require("express");
 const router = express.Router();
 const db = require("../config/database");
 
-// to recieve the message from the paypal  
-router.post('/paypal',async(req,res)=>{
-    try{
+// Receive the webhook message from PayPal or Postman simulation
+router.post('/paypal', async (req, res) => {
+    try {
         const event = req.body;
-        console.log('Recieved paypal webhook event');
+        console.log('Received PayPal webhook event:', event.event_type);
 
         const resource = event.resource;
-        const subId = resource.id || resource.billing_agreement_id;
+        if (!resource) {
+            return res.status(400).json({ error: 'No resource found in webhook event' });
+        }
 
+        const subId = resource.id || resource.billing_agreement_id;
         if (!subId) {
             return res.status(400).json({ error: 'No subscription ID found in event resource' });
         }
 
         let newStatus = null;
 
-        // Map PayPal event types to your database subscription statuses
+        // Map PayPal event types to database subscription statuses
         if (event.event_type === 'BILLING.SUBSCRIPTION.ACTIVATED') {
             newStatus = 'ACTIVE';
         } else if (event.event_type === 'BILLING.SUBSCRIPTION.CANCELLED') {
@@ -39,11 +42,11 @@ router.post('/paypal',async(req,res)=>{
             });
         }
 
-        res.status(200).json({recieved:true});
+        res.status(200).json({ received: true });
 
-    }catch(error){
-        console.error('Webhook error:',error.message);
-        res.status(500).json({error:error.message});
+    } catch (error) {
+        console.error('Webhook error:', error.message);
+        res.status(500).json({ error: error.message });
     }
 });
 
