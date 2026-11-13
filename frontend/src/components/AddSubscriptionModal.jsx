@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Plus, X, Zap, Calendar, DollarSign, Activity } from 'lucide-react';
 
 const CATEGORIES = [
     'Entertainment',
@@ -58,7 +59,7 @@ export default function AddSubscriptionModal({ isOpen, onClose, onAdd }) {
             });
             onClose();
         } catch (err) {
-            setError(err.message || 'Failed to add subscription.');
+            setError(err.response?.data?.error || err.message || 'Failed to add subscription.');
         } finally {
             setSubmitting(false);
         }
@@ -68,92 +69,106 @@ export default function AddSubscriptionModal({ isOpen, onClose, onAdd }) {
         <div style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(0, 0, 0, 0.75)',
-            backdropFilter: 'blur(6px)',
+            background: 'rgba(0, 0, 0, 0.82)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 105,
+            zIndex: 110,
             padding: '20px'
         }}>
             <div style={{
-                background: '#111827',
-                border: '1px solid #374151',
+                background: '#0d131f',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
                 borderRadius: '16px',
                 width: '100%',
                 maxWidth: '520px',
                 padding: '28px',
-                boxShadow: '0 25px 50px rgba(0, 0, 0, 0.7)',
-                color: '#f9fafb'
+                boxShadow: '0 25px 60px rgba(0, 0, 0, 0.85)',
+                color: '#f8fafc'
             }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ fontSize: '22px' }}>➕</span>
-                        <h3 style={{ fontSize: '18px', fontWeight: '800', margin: 0 }}>Add Tracked Subscription</h3>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div style={{
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: '8px',
+                            background: 'rgba(79, 70, 229, 0.15)',
+                            border: '1px solid rgba(79, 70, 229, 0.3)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#818cf8'
+                        }}>
+                            <Plus size={18} strokeWidth={2.4} />
+                        </div>
+                        <h3 style={{ fontSize: '17px', fontWeight: '700', margin: 0, color: '#f8fafc' }}>Add Subscription</h3>
                     </div>
                     <button
                         onClick={onClose}
-                        style={{ background: 'transparent', border: 'none', color: '#9ca3af', fontSize: '20px', cursor: 'pointer' }}
+                        style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '4px' }}
                     >
-                        ✕
+                        <X size={18} />
                     </button>
                 </div>
 
                 {error && (
-                    <div style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#f87171', padding: '10px', borderRadius: '8px', fontSize: '13px', marginBottom: '16px' }}>
+                    <div style={{ background: 'rgba(244, 63, 94, 0.1)', border: '1px solid rgba(244, 63, 94, 0.3)', color: '#fb7185', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', marginBottom: '16px' }}>
                         {error}
                     </div>
                 )}
 
                 <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                     <div>
-                        <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#9ca3af', marginBottom: '4px' }}>
-                            Service Name *
+                        <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '5px' }}>
+                            Service Identifier *
                         </label>
                         <input
                             required
                             type="text"
-                            placeholder="e.g. Netflix, Spotify, Figma, Gym Pass"
+                            placeholder="e.g. Netflix, Spotify, Figma, GitHub Copilot"
                             value={form.name}
                             onChange={(e) => setForm({ ...form, name: e.target.value })}
                             style={{
                                 width: '100%',
                                 padding: '10px 12px',
-                                background: '#1f2937',
-                                border: '1px solid #374151',
+                                background: '#121826',
+                                border: '1px solid rgba(255, 255, 255, 0.1)',
                                 borderRadius: '8px',
                                 color: '#fff',
-                                fontSize: '14px'
+                                fontSize: '13px'
                             }}
                         />
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '12px' }}>
                         <div>
-                            <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#9ca3af', marginBottom: '4px' }}>
-                                Amount *
+                            <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '5px' }}>
+                                Renewal Rate *
                             </label>
                             <input
                                 required
                                 type="number"
                                 step="0.01"
                                 min="0.01"
-                                placeholder="15.99"
+                                placeholder="19.99"
                                 value={form.amount}
                                 onChange={(e) => setForm({ ...form, amount: e.target.value })}
                                 style={{
                                     width: '100%',
                                     padding: '10px 12px',
-                                    background: '#1f2937',
-                                    border: '1px solid #374151',
+                                    background: '#121826',
+                                    border: '1px solid rgba(255, 255, 255, 0.1)',
                                     borderRadius: '8px',
                                     color: '#fff',
-                                    fontSize: '14px'
+                                    fontSize: '13px',
+                                    fontFamily: 'var(--font-mono)'
                                 }}
                             />
                         </div>
                         <div>
-                            <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#9ca3af', marginBottom: '4px' }}>
+                            <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '5px' }}>
                                 Currency
                             </label>
                             <select
@@ -162,11 +177,11 @@ export default function AddSubscriptionModal({ isOpen, onClose, onAdd }) {
                                 style={{
                                     width: '100%',
                                     padding: '10px 12px',
-                                    background: '#1f2937',
-                                    border: '1px solid #374151',
+                                    background: '#121826',
+                                    border: '1px solid rgba(255, 255, 255, 0.1)',
                                     borderRadius: '8px',
                                     color: '#fff',
-                                    fontSize: '14px'
+                                    fontSize: '13px'
                                 }}
                             >
                                 <option value="USD">USD ($)</option>
@@ -179,8 +194,8 @@ export default function AddSubscriptionModal({ isOpen, onClose, onAdd }) {
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                         <div>
-                            <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#9ca3af', marginBottom: '4px' }}>
-                                Billing Cycle
+                            <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '5px' }}>
+                                Cycle
                             </label>
                             <select
                                 value={form.billing_cycle}
@@ -188,11 +203,11 @@ export default function AddSubscriptionModal({ isOpen, onClose, onAdd }) {
                                 style={{
                                     width: '100%',
                                     padding: '10px 12px',
-                                    background: '#1f2937',
-                                    border: '1px solid #374151',
+                                    background: '#121826',
+                                    border: '1px solid rgba(255, 255, 255, 0.1)',
                                     borderRadius: '8px',
                                     color: '#fff',
-                                    fontSize: '14px'
+                                    fontSize: '13px'
                                 }}
                             >
                                 <option value="MONTHLY">Monthly</option>
@@ -201,8 +216,8 @@ export default function AddSubscriptionModal({ isOpen, onClose, onAdd }) {
                             </select>
                         </div>
                         <div>
-                            <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#9ca3af', marginBottom: '4px' }}>
-                                Category
+                            <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '5px' }}>
+                                Domain Category
                             </label>
                             <select
                                 value={form.category}
@@ -210,11 +225,11 @@ export default function AddSubscriptionModal({ isOpen, onClose, onAdd }) {
                                 style={{
                                     width: '100%',
                                     padding: '10px 12px',
-                                    background: '#1f2937',
-                                    border: '1px solid #374151',
+                                    background: '#121826',
+                                    border: '1px solid rgba(255, 255, 255, 0.1)',
                                     borderRadius: '8px',
                                     color: '#fff',
-                                    fontSize: '14px'
+                                    fontSize: '13px'
                                 }}
                             >
                                 {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
@@ -222,48 +237,49 @@ export default function AddSubscriptionModal({ isOpen, onClose, onAdd }) {
                         </div>
                     </div>
 
-                    {/* Advanced Feature Inputs: Price Hike Baseline & Cost-Per-Use */}
-                    <div style={{ background: '#1f2937', padding: '14px', borderRadius: '10px', border: '1px solid #374151' }}>
-                        <div style={{ fontSize: '12px', fontWeight: '800', color: '#818cf8', textTransform: 'uppercase', marginBottom: '10px' }}>
-                            ⚡ Advanced Competitive Feature Settings
+                    {/* Advanced Feature Settings */}
+                    <div style={{ background: '#121826', padding: '16px', borderRadius: '10px', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                        <div style={{ fontSize: '11px', fontWeight: '700', color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: '10px' }}>
+                            Advanced ROI & Baseline Tracking
                         </div>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                             <div>
-                                <label style={{ display: 'block', fontSize: '11px', color: '#d1d5db', marginBottom: '3px' }}>
+                                <label style={{ display: 'block', fontSize: '11px', color: '#cbd5e1', marginBottom: '3px' }}>
                                     Historical Base Price
                                 </label>
                                 <input
                                     type="number"
                                     step="0.01"
-                                    placeholder="Baseline (e.g. 12.99)"
+                                    placeholder="Initial rate (e.g. 14.99)"
                                     value={form.historical_base_amount}
                                     onChange={(e) => setForm({ ...form, historical_base_amount: e.target.value })}
                                     style={{
                                         width: '100%',
-                                        padding: '8px',
-                                        background: '#111827',
-                                        border: '1px solid #4b5563',
+                                        padding: '8px 10px',
+                                        background: '#090d16',
+                                        border: '1px solid rgba(255, 255, 255, 0.1)',
                                         borderRadius: '6px',
                                         color: '#fff',
-                                        fontSize: '12px'
+                                        fontSize: '12px',
+                                        fontFamily: 'var(--font-mono)'
                                     }}
                                 />
                             </div>
                             <div>
-                                <label style={{ display: 'block', fontSize: '11px', color: '#d1d5db', marginBottom: '3px' }}>
-                                    Monthly Usage Count
+                                <label style={{ display: 'block', fontSize: '11px', color: '#cbd5e1', marginBottom: '3px' }}>
+                                    Monthly Sessions
                                 </label>
                                 <input
                                     type="number"
                                     min="0"
-                                    placeholder="Uses/month"
+                                    placeholder="Uses / mo"
                                     value={form.usage_count}
                                     onChange={(e) => setForm({ ...form, usage_count: e.target.value })}
                                     style={{
                                         width: '100%',
-                                        padding: '8px',
-                                        background: '#111827',
-                                        border: '1px solid #4b5563',
+                                        padding: '8px 10px',
+                                        background: '#090d16',
+                                        border: '1px solid rgba(255, 255, 255, 0.1)',
                                         borderRadius: '6px',
                                         color: '#fff',
                                         fontSize: '12px'
@@ -273,8 +289,8 @@ export default function AddSubscriptionModal({ isOpen, onClose, onAdd }) {
                         </div>
 
                         <div style={{ marginTop: '10px' }}>
-                            <label style={{ display: 'block', fontSize: '11px', color: '#d1d5db', marginBottom: '3px' }}>
-                                Last Used Date (Older than 60 days triggers Zombie alert)
+                            <label style={{ display: 'block', fontSize: '11px', color: '#cbd5e1', marginBottom: '3px' }}>
+                                Last Active Date (Older than 60 days flags as dormant)
                             </label>
                             <input
                                 type="date"
@@ -282,9 +298,9 @@ export default function AddSubscriptionModal({ isOpen, onClose, onAdd }) {
                                 onChange={(e) => setForm({ ...form, last_used_date: e.target.value })}
                                 style={{
                                     width: '100%',
-                                    padding: '8px',
-                                    background: '#111827',
-                                    border: '1px solid #4b5563',
+                                    padding: '8px 10px',
+                                    background: '#090d16',
+                                    border: '1px solid rgba(255, 255, 255, 0.1)',
                                     borderRadius: '6px',
                                     color: '#fff',
                                     fontSize: '12px'
@@ -297,22 +313,22 @@ export default function AddSubscriptionModal({ isOpen, onClose, onAdd }) {
                         type="submit"
                         disabled={submitting}
                         style={{
-                            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                            background: 'linear-gradient(135deg, #4f46e5 0%, #6366f1 100%)',
                             color: '#fff',
-                            border: 'none',
+                            border: '1px solid rgba(255, 255, 255, 0.15)',
                             padding: '12px',
                             borderRadius: '8px',
-                            fontSize: '14px',
-                            fontWeight: '700',
+                            fontSize: '13px',
+                            fontWeight: '600',
                             cursor: submitting ? 'wait' : 'pointer',
-                            marginTop: '8px'
+                            marginTop: '6px',
+                            boxShadow: '0 4px 14px rgba(79, 70, 229, 0.35)'
                         }}
                     >
-                        {submitting ? 'Saving...' : 'Add to Shield'}
+                        {submitting ? 'Registering...' : 'Add to Defense Portfolio'}
                     </button>
                 </form>
             </div>
         </div>
     );
 }
-
