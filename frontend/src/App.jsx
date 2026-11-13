@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { ShieldCheck } from 'lucide-react';
 import Navbar from './components/Navbar';
 import LandingPage from './components/LandingPage';
 import DashboardView from './components/DashboardView';
@@ -212,20 +213,20 @@ export default function App() {
                     position: 'fixed',
                     bottom: '24px',
                     right: '24px',
-                    background: '#1f2937',
-                    border: '1px solid #4f46e5',
-                    color: '#f9fafb',
-                    padding: '12px 20px',
+                    background: '#0d131f',
+                    border: '1px solid rgba(99, 102, 241, 0.4)',
+                    color: '#f8fafc',
+                    padding: '12px 18px',
                     borderRadius: '10px',
-                    boxShadow: '0 10px 25px rgba(0, 0, 0, 0.6)',
+                    boxShadow: '0 10px 30px rgba(0, 0, 0, 0.7)',
                     zIndex: 200,
-                    fontSize: '14px',
+                    fontSize: '13px',
                     fontWeight: '600',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '10px'
                 }}>
-                    <span>🛡️</span>
+                    <ShieldCheck size={16} color="#818cf8" strokeWidth={2.4} />
                     <span>{toastMessage}</span>
                 </div>
             )}
